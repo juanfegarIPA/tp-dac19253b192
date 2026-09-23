@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex, nofollow">
+<title>Teleprompter · Extensionismo tecnológico · Barranquilla</title>
+<style>
+  :root {
+    --bg: #0b0b0b; --fg: #f3f1ea; --dim: #9a978f; --accent: #f26529; --green: #6fbf73;
+    --warn: #ffcf5a; --bar: rgba(20,20,20,.94); --fs: 32px; --lh: 1.45;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); }
+  body { font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; }
+  header.intro { padding: 24px 20px 8px; color: var(--dim); font-size: 15px; line-height: 1.5; }
+  header.intro h1 { color: var(--fg); font-family: Georgia, serif; font-weight: normal; font-size: 24px; margin: 0 0 6px; }
+  main { padding: 0 20px 70vh; max-width: 900px; margin: 0 auto; }
+  section.slide { padding-top: 18px; }
+  .tag { display: block; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700;
+         color: var(--accent); border-top: 1px solid #333; padding-top: 14px; margin-bottom: 8px; }
+  .tag small { color: var(--dim); font-weight: 400; letter-spacing: 0; text-transform: none; margin-left: 6px; }
+  .script p { font-size: var(--fs); line-height: var(--lh); margin: 0 0 .7em; }
+  .script p.q { font-family: Georgia, serif; font-style: italic; }
+  .script p.bridge { color: #cfe8d0; }
+  .script p.bridge::before { content: "↪ "; color: var(--green); }
+  .script p.h { font-size: calc(var(--fs) * .6); color: var(--accent); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; margin: 1em 0 .3em; }
+  b, strong { color: #fff; background: rgba(242,101,41,.22); padding: 0 .12em; border-radius: 3px; font-weight: 700; }
+  .keys { display: none; font-size: calc(var(--fs) * .95); line-height: 1.35; padding-left: 1.1em; margin: 0 0 .6em; }
+  .keys li { margin-bottom: .35em; }
+  aside.ojo { font-size: 17px; line-height: 1.45; color: #1a1400; background: var(--warn); border-radius: 10px;
+              padding: 10px 14px; margin: 4px 0 16px; }
+  aside.ojo::before { content: "OJO · "; font-weight: 800; }
+  body.hide-ojo aside.ojo { display: none; }
+  body.mode-keys .script { display: none; }
+  body.mode-keys .keys { display: block; }
+  .extra h2 { font-family: Georgia, serif; font-weight: normal; font-size: 26px; color: var(--accent); margin: 40px 0 10px; }
+  .extra h3 { font-size: 20px; margin: 22px 0 6px; color: #fff; }
+  .extra p, .extra li { font-size: 19px; line-height: 1.5; }
+  .extra .who { color: var(--dim); font-size: 15px; }
+  table.log { width: 100%; border-collapse: collapse; font-size: 16px; margin-top: 8px; }
+  table.log td, table.log th { border-bottom: 1px solid #333; padding: 6px 4px; text-align: left; }
+  table.log .over { color: var(--warn); }
+
+  /* Controles: solo con JS */
+  .js-only { display: none; }
+  html.js .js-only { display: flex; }
+  #guide { position: fixed; left: 0; right: 0; top: 30vh; height: 0; border-top: 2px dashed rgba(242,101,41,.55);
+           pointer-events: none; z-index: 5; }
+  #guide::before { content: "▶"; position: absolute; left: 4px; top: -13px; color: var(--accent); font-size: 18px; }
+  #top { position: fixed; top: 0; left: 0; right: 0; z-index: 10; background: var(--bar);
+         padding: calc(env(safe-area-inset-top) + 6px) 12px 6px; font-size: 14px; color: var(--dim);
+         justify-content: space-between; align-items: center; gap: 8px; }
+  #top .now { color: var(--fg); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+  #top .clock { font-variant-numeric: tabular-nums; color: var(--fg); font-size: 16px; }
+  #bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; background: var(--bar);
+         padding: 8px 8px calc(env(safe-area-inset-bottom) + 8px); flex-direction: column; gap: 6px; }
+  #bar .row { display: flex; gap: 6px; justify-content: space-between; align-items: center; }
+  #bar button { flex: 1; min-height: 46px; border: 0; border-radius: 12px; background: #262626; color: var(--fg);
+                font-size: 17px; font-weight: 600; }
+  #bar button.on { background: var(--accent); color: #111; }
+  #bar button.play { flex: 1.6; background: var(--green); color: #0b0b0b; font-size: 20px; }
+  #bar button.play.pausa { background: #3a3a3a; color: var(--fg); }
+  #bar .val { min-width: 74px; text-align: center; color: var(--dim); font-size: 13px; line-height: 1.2; }
+  #bar .val b { background: none; color: var(--fg); font-size: 16px; display: block; }
+  body.chrome-hidden #bar, body.chrome-hidden #top { opacity: .0; pointer-events: none; }
+  body.chrome-hidden #bar { transition: opacity .4s; }
+  html.js main { padding-top: 60px; }
+
+  /* Modo tarjetas */
+  body.mode-cards main > section.slide { display: none; }
+  body.mode-cards main > section.slide.current { display: block; min-height: 70vh; }
+  body.mode-cards main > .extra, body.mode-cards header.intro { display: none; }
+  body.mode-cards #guide { display: none; }
+  body.mode-cards main { padding-bottom: 160px; }
+</style>
+</head>
+<body>
+<script>document.documentElement.classList.add('js');</script>
+
+<div id="top" class="js-only">
+  <span class="now" id="now">Diapositiva 1</span>
+  <span class="clock" id="clock">00:00</span>
+  <span id="remain">—</span>
+</div>
+<div id="guide" class="js-only"></div>
+
+<header class="intro">
+  <h1>Extensionismo tecnológico para pymes</h1>
+  Guion del Google Doc (Draft 4 con los ajustes de JF del 23/09), alineado a las 20 diapositivas.
+  Mesa Técnica de la Red Nacional de Actores Territoriales · Barranquilla, 24 sep 2026.<br>
+  <b>Toque</b> el texto para iniciar o pausar. La línea naranja marca por dónde va leyendo.
+  Frases en verde (↪) = transición hacia la diapositiva siguiente.
+</header>
+
+<main id="main">
+
+<section class="slide" data-n="1" data-t="Portada · Extensionismo tecnológico para pymes">
+  <span class="tag">Diapositiva 1 <small>Portada</small></span>
+  <div class="script">
+    <p>Hace más de 10 años, Colombia probó dos versiones del mismo programa de acompañamiento técnico para mejorar la productividad de pequeñas y medianas empresas. <b>Una costó 3 veces más que la otra.</b></p>
+    <p>Diez años después, <b>la más económica es la que sigue dando resultados</b>: más ventas, utilidades, exportaciones y empleos. Ese programa se llamó extensionismo tecnológico.</p>
+    <p>Es <b>evidencia de nivel internacional sobre empresas colombianas.</b> Les voy a contar cómo lo hicimos, qué encontramos y sobre todo <b>qué se puede hacer con esta evidencia en los próximos cuatro años.</b></p>
+  </div>
+  <ul class="keys">
+    <li>Dos versiones del mismo programa; una costó 3 veces más.</li>
+    <li>10 años después, la más económica sigue dando resultados.</li>
+    <li>Evidencia de nivel internacional sobre empresas colombianas.</li>
+    <li>Cómo lo hicimos · qué encontramos · qué hacer en 4 años.</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="2" data-t="Quiénes somos · IPA">
+  <span class="tag">Diapositiva 2 <small>Trabajamos por un mundo con más evidencia y menos pobreza</small></span>
+  <div class="script">
+    <p>Yo soy Juan Felipe García y lidero a Innovations for Poverty Action (IPA) en Colombia.</p>
+    <p>Somos una organización que trabaja para <b>generar evidencia rigurosa sobre qué funciona</b> y llevar esa evidencia a las decisiones de política pública.</p>
+    <p class="bridge">Dentro de ese marco, hace más de 10 años apoyamos a un equipo de técnicos y académicos a hacerse estas preguntas:</p>
+  </div>
+  <ul class="keys">
+    <li>JF, lidero IPA Colombia.</li>
+    <li>Evidencia rigurosa de qué funciona → decisiones de política.</li>
+    <li>Apoyamos a técnicos y académicos a hacerse estas preguntas.</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="3" data-t="Las preguntas">
+  <span class="tag">Diapositiva 3 <small>Solo las preguntas</small></span>
+  <div class="script">
+    <p class="q">¿Los programas de productividad realmente le sirven a las empresas?</p>
+    <p class="q">¿En qué condiciones generan más impacto?</p>
+    <p class="q">¿Ese impacto dura? ¿Por cuánto tiempo?</p>
+  </div>
+  <ul class="keys">
+    <li>¿Sirven? · ¿En qué condiciones? · ¿Dura?</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="4" data-t="Una pregunta global (mapa)">
+  <span class="tag">Diapositiva 4 <small>Una pregunta global: ¿cómo mejorar la productividad empresarial?</small></span>
+  <div class="script">
+    <p>No eran los primeros ni los únicos en hacerse estas preguntas. En varios países se han hecho evaluaciones rigurosas de programas de acompañamiento empresarial con diferentes enfoques.</p>
+    <p>Por ejemplo, en <b>Chile</b> se compararon dos formas de complementar la capacitación empresarial para mujeres: modelos de rol y asistencia técnica individualizada. Los modelos de rol lograron ganancias similares a un costo mucho menor.</p>
+    <p>En plantas textiles en <b>India</b>, se hizo un diagnóstico y acompañamiento en la implementación de 38 prácticas de gestión. Las ganancias anuales en utilidades superaron el costo del acompañamiento, volviendo a la inversión recuperable en un año. Ocho años después del programa, las plantas intervenidas mantuvieron una ventaja importante en productividad laboral.</p>
+    <p>Entonces, ya existe evidencia en distintos contextos de que el acompañamiento empresarial mejora la productividad. Pero los servicios de consultoría individual pueden ser muy costosos para pymes en países en desarrollo, y demasiado costosos para que el gobierno los implemente a escala. Por esto, <b>el equipo quiso probar si era posible lograr los mismos resultados del acompañamiento individual (o mejores) a un menor costo.</b></p>
+    <p>Lo que les voy a mostrar hoy aporta a esta conversación internacional y al esfuerzo por generar evidencia de calidad sobre programas costo-efectivos para mejorar la productividad empresarial.</p>
+    <p class="bridge">En Colombia, responder estas preguntas fue posible gracias a un esfuerzo conjunto y este sistema de actores.</p>
+  </div>
+  <ul class="keys">
+    <li>No eran los únicos: evaluaciones en muchos países.</li>
+    <li>Chile: modelos de rol ≈ mismas ganancias, menor costo.</li>
+    <li>India: 38 prácticas; se paga en 1 año; ventaja 8 años después.</li>
+    <li>Pero lo individual es caro → ¿mismo resultado más barato?</li>
+    <li>Colombia aporta a esa conversación.</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="5" data-t="Un esfuerzo conjunto">
+  <span class="tag">Diapositiva 5 <small>Un esfuerzo conjunto</small></span>
+  <div class="script">
+    <p>El programa de extensionismo tecnológico fue <b>diseñado por el Departamento Nacional de Planeación y el Banco Mundial</b> en colaboración con el SENA y el Ministerio de Comercio, Industria y Turismo (MinCIT).</p>
+    <p>Y el DNP, el Banco Mundial e IPA realizaron la evaluación experimental del piloto junto con estudios de caso y entrevistas con implementadores para entender los mecanismos detrás del impacto de la intervención.</p>
+    <p>Para este proceso se contrató una firma implementadora de larga trayectoria en el acompañamiento de pymes en el país.</p>
+  </div>
+  <ul class="keys">
+    <li>Diseño: DNP + Banco Mundial, con SENA y MinCIT.</li>
+    <li>Evaluación: DNP + Banco Mundial + IPA (+ casos y entrevistas).</li>
+    <li>Firma implementadora con larga trayectoria.</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="6" data-t="Evaluación RIGUROSA">
+  <span class="tag">Diapositiva 6 <small>Evaluación RIGUROSA</small></span>
+  <div class="script">
+    <p>Si ustedes me han estado poniendo atención, se habrán dado cuenta de que más de una vez he hablado de rigor. Hay una buena razón para ese énfasis. El énfasis en lo <b>RIGUROSO</b> de una evaluación. El consenso de la academia apunta a que <b>la forma más rigurosa es una evaluación experimental.</b> Entonces.</p>
+    <p class="q">¿Por qué es importante realizar la evaluación experimental de un programa? ¿Por qué no es suficiente comparar el desempeño de empresas con y sin acompañamiento o estudiar los resultados empresariales antes y después del acompañamiento? ¿Cómo sabemos con certeza si los programas de productividad realmente le sirven a las empresas?</p>
+    <p>Si comparamos a las mismas empresas antes y después del acompañamiento, estaríamos capturando todo lo demás que pudo afectar su desempeño: la pandemia, las condiciones económicas, la competencia.</p>
+    <p>Y si comparamos a las empresas que recibieron el acompañamiento con otras que no, basados, por ejemplo, en quién fue seleccionado o no para el programa, es altamente probable que las empresas seleccionadas tengan características que de todas formas las vayan a hacer más productivas en el futuro, incluso si nunca hubieran pasado por el programa.</p>
+    <p class="bridge">Una evaluación de impacto aleatorizada nos permite aislar el efecto causal del programa. Así, cuando comparamos lo que ocurre con los grupos después, la diferencia puede atribuirse directamente al acompañamiento que recibieron. <b>No es coincidencia, es causalidad.</b> ¿Cómo funciona?</p>
+  </div>
+  <ul class="keys">
+    <li>«Más de una vez he hablado de rigor» → por algo.</li>
+    <li>Consenso académico: lo más riguroso es experimental.</li>
+    <li>Antes/después: capta la pandemia, la economía, la competencia.</li>
+    <li>Seleccionadas vs. no: las elegidas igual iban a crecer más.</li>
+    <li>Aleatorizar aísla el efecto: no es coincidencia, es causalidad.</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="7" data-t="Evaluación aleatorizada">
+  <span class="tag">Diapositiva 7 <small>La evaluación de impacto aleatorizada es el método más riguroso</small></span>
+  <div class="script">
+    <p>La idea es relativamente sencilla: en lugar de decidir qué empresas reciben el acompañamiento según sus necesidades, características o interés, <b>se asignan aleatoriamente.</b></p>
+    <p>La asignación aleatoria permite que, en promedio, los grupos de empresas sean comparables desde el inicio. <b>Nada las diferencia con excepción de la suerte que tienen de entrar o no al programa.</b> Esto es cierto no solo para las características que podemos observar, como el tamaño de la empresa o su productividad, sino también para otras características que podríamos no conocer o no estar midiendo.</p>
+    <p>En este caso, <b>159 pymes</b> fueron asignadas aleatoriamente a <b>3 grupos</b>: uno que no recibió acompañamiento, uno que recibió acompañamiento individual y otro que recibió acompañamiento grupal junto con otras 3 a 8 empresas. Esto le permitió a los investigadores comparar no solamente a empresas con y sin acompañamiento, sino también dos modalidades diferentes.</p>
+    <p>Para este estudio, la evaluación a largo plazo se hizo utilizando <b>únicamente datos administrativos y encuestas de alcance nacional</b> como la EDIT (Encuesta de desarrollo e innovación tecnológica). Esto permitió: 1) hacer un mejor seguimiento de todas las empresas participantes incluso una década después del programa y 2) medir los cambios en productividad mediante fuentes secundarias que <b>no pudieron ser manipuladas directamente por el extensionista o por la entidad implementadora</b>, dándole la máxima credibilidad y validez a los resultados.</p>
+    <p class="bridge">Siguiendo esta metodología, aprendimos que el extensionismo tecnológico en Colombia funcionó, pero ¿cómo se llegó al extensionismo?</p>
+  </div>
+  <ul class="keys">
+    <li>Se asigna al azar → solo los diferencia la suerte.</li>
+    <li>También en lo que no se mide.</li>
+    <li>159 pymes · 3 grupos: control, individual, grupal (3–8 empresas).</li>
+    <li>Largo plazo solo con datos administrativos + EDIT.</li>
+    <li>Ni el extensionista ni el implementador pudieron tocar los datos.</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="8" data-t="Extensionismo tecnológico (sección)">
+  <span class="tag">Diapositiva 8 <small>Extensionismo tecnológico · programa para mejorar las prácticas de gestión en pymes</small></span>
+  <div class="script">
+    <p>El programa de extensionismo tecnológico fue una iniciativa pública implementada en Colombia <b>entre el 2012 y el 2016</b> con 159 pequeñas y medianas empresas del <b>sector autopartes</b>.</p>
+    <p class="bridge">En la práctica, el programa siguió una secuencia de selección, diagnóstico, acompañamiento y evaluación.</p>
+  </div>
+  <ul class="keys">
+    <li>Iniciativa pública · 2012–2016 · 159 pymes · autopartes.</li>
+    <li>Selección → diagnóstico → acompañamiento → evaluación.</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="9" data-t="Implementación 1 · Selección">
+  <span class="tag">Diapositiva 9 <small>Implementación · 1. Selección de empresas y extensionistas</small></span>
+  <div class="script">
+    <p>Primero se seleccionaron tanto las empresas participantes como los extensionistas mediante <b>procesos rigurosos y competitivos.</b></p>
+    <p>Para seleccionar las empresas interesadas en participar se hizo una convocatoria pública buscando pymes que tuvieran mínimo 2 años de operación, fueran proveedores de la industria automotriz, estuvieran en Antioquia, Cundinamarca, el Valle del Cauca o el Eje Cafetero, y pudieran comprometer tiempo de su personal y equipos directivos para el acompañamiento.</p>
+    <p>Los extensionistas son los profesionales encargados de realizar el acompañamiento en las empresas. Para este programa, se seleccionaron 2 tipos de extensionistas: 1) <b>extensionistas líderes</b> con más años de experiencia y una visión más sistémica, y 2) <b>extensionistas por procesos</b>, con conocimiento técnico y especializados en cada una de las 5 áreas de intervención.</p>
+  </div>
+  <ul class="keys">
+    <li>Procesos rigurosos y competitivos.</li>
+    <li>Empresas: 2+ años, proveedoras automotrices, 4 regiones, compromiso directivo.</li>
+    <li>Extensionistas: líderes (visión sistémica) + por procesos (técnicos).</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="10" data-t="Implementación 2 · Diagnóstico">
+  <span class="tag">Diapositiva 10 <small>Implementación · 2. Diagnóstico · 5 áreas</small></span>
+  <div class="script">
+    <p>Después, se hizo un <b>diagnóstico de 2 semanas</b> en todas las empresas con un equipo de 6 extensionistas por cada una. Durante el diagnóstico, se hicieron recorridos por las instalaciones y reuniones con equipos directivos para evaluar <b>141 prácticas de gestión</b> en las 5 áreas de intervención: finanzas, producción, recursos humanos, logística, y mercadeo.</p>
+    <p>El diagnóstico generaba 2 resultados: una evaluación inicial de las prácticas de gestión de la empresa y un <b>plan de acción personalizado</b> para el corto, mediano y largo plazo. En este plan de acción, los extensionistas identificaban prácticas prioritarias y sugerían acciones de rápida adopción y baja inversión de capital.</p>
+  </div>
+  <ul class="keys">
+    <li>2 semanas · 6 extensionistas · 141 prácticas · 5 áreas.</li>
+    <li>Sale: evaluación inicial + plan de acción (rápido, barato).</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="11" data-t="Implementación 3 · Acompañamiento">
+  <span class="tag">Diapositiva 11 <small>Implementación · 3. Acompañamiento técnico</small></span>
+  <div class="script">
+    <p>El acompañamiento técnico se dividió en 2 modalidades.</p>
+    <p>En la <b>modalidad individual</b>, se dieron <b>500 horas</b> de acompañamiento intensivo adaptado a las necesidades de cada empresa.</p>
+    <p>En la <b>modalidad grupal</b>, se dieron <b>408 horas</b> de acompañamiento a grupos de empresas de la misma región. <b>El costo de esta modalidad fue un tercio del de la modalidad individual.</b> El acompañamiento grupal buscó reducir el costo de la asistencia técnica y aprovechar los beneficios potenciales del aprendizaje entre pares.</p>
+    <p>En el piloto, el acompañamiento técnico especializado fue financiado completamente con recursos públicos para las empresas seleccionadas.</p>
+  </div>
+  <ul class="keys">
+    <li>Individual: 500 horas.</li>
+    <li>Grupal: 408 horas · 1/3 del costo · aprendizaje entre pares.</li>
+    <li>Financiado 100 % con recursos públicos.</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="12" data-t="Implementación 4 · Cierre y monitoreo">
+  <span class="tag">Diapositiva 12 <small>Implementación · 4. Cierre y monitoreo · reporte de cierre con recomendaciones</small></span>
+  <div class="script">
+    <p>A lo largo del programa se hizo un seguimiento de la implementación con las empresas. Para finalizar el proceso, el extensionista realiza un <b>reporte</b> en el que documenta resultados, adaptaciones del plan de acción y lecciones aprendidas.</p>
+    <p class="bridge">Entonces, ¿qué aprendimos de este programa?</p>
+  </div>
+  <ul class="keys">
+    <li>Seguimiento durante el programa.</li>
+    <li>Reporte de cierre: resultados, ajustes, lecciones.</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="13" data-t="RESULTADOS · una década después">
+  <span class="tag">Diapositiva 13 <small>El acompañamiento técnico grupal sigue beneficiando a las empresas una década después</small></span>
+  <div class="script">
+    <p class="h">Impacto</p>
+    <p>Diez años después del acompañamiento grupal, estas empresas registraron aumentos de <b>55 % en ventas anuales</b> (USD 1,2 millones), <b>48 % en ganancias anuales</b> (USD 475.000), 47 % en valor agregado y 57 % en producción, además de una <b>mayor probabilidad de exportar</b> (10 puntos porcentuales).</p>
+    <p>A diferencia de la modalidad individual, el formato grupal generó espacios estructurados de aprendizaje entre pares para comparar prácticas y discutir problemas comunes. Las relaciones construidas entre empresarios a través de este acompañamiento persistieron después de terminada la intervención y crearon iniciativas de colaboración entre empresas.</p>
+    <p>Además, las capacidades desarrolladas durante la intervención ayudaron a las empresas a adaptarse frente a choques externos como <b>la pandemia y la creciente competencia de productos chinos de bajo costo.</b> Estas empresas pudieron diversificar productos y mercados, ingresar a nuevos sectores o reposicionarse hacia actividades de mayor valor agregado gracias a las prácticas de gestión aprendidas.</p>
+    <p class="h">Costo-efectividad</p>
+    <p><b>El impacto del acompañamiento grupal se logró a un tercio del costo del individual.</b></p>
+    <p>Aunque ambas modalidades de acompañamiento mejoraron las prácticas de gestión en el corto plazo, la modalidad grupal produjo efectos significativamente mayores sobre el desempeño y la supervivencia empresarial en el largo plazo, a un costo mucho menor por empresa.</p>
+    <p>Incluso tomando el escenario más conservador que los datos permiten sostener, el aumento anual de utilidades supera el costo de implementación. <b>La inversión se recupera en menos de un año</b> de utilidades adicionales y el retorno de la inversión en un año es de <b>más del 65 %.</b></p>
+    <p class="h">Sostenibilidad</p>
+    <p>Lejos de desvanecerse, el impacto del acompañamiento técnico grupal es más visible a mediano y largo plazo, <b>siguiendo presente incluso 10 años después</b> de la intervención.</p>
+    <p>Hoy en día, este programa es evidencia de una intervención costo-efectiva para mejorar la productividad empresarial en pequeñas y medianas empresas en Colombia.</p>
+    <p class="bridge">Ahora, además de preguntarnos qué modalidad funcionó mejor, hay una pregunta más importante si pensamos en llevar este tipo de intervención hacia adelante: ¿qué tiene que pasar a nivel institucional y empresarial para que los cambios realmente duren? El piloto nos deja 3 aprendizajes para el diseño de una política de productividad: adoptar una visión sistémica, institucionalizar el conocimiento y construir capacidades de medición.</p>
+  </div>
+  <ul class="keys">
+    <li>+55 % ventas · +48 % utilidades · +47 % valor agregado · +57 % producción · +10 pp exportar · +6–15 trabajadores.</li>
+    <li>Pares: relaciones que duraron y colaboración.</li>
+    <li>Resiliencia: pandemia, competencia china.</li>
+    <li>1/3 del costo · se paga en menos de un año (7 meses) · &gt;65 % en un año (conservador).</li>
+    <li>10 años después, sigue ahí.</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="14" data-t="Tres aprendizajes">
+  <span class="tag">Diapositiva 14 <small>Aprendizajes para que el acompañamiento genere cambios duraderos</small></span>
+  <div class="script">
+    <p class="h">01 · Adoptar una visión sistémica de la empresa</p>
+    <p>Primero, un programa de extensionismo debe <b>adoptar una visión sistémica de la empresa</b> desde el diagnóstico, en lugar de limitarse a una línea de servicio o área de gestión. Esta visión sistémica es la base sobre la que se construye el conjunto de indicadores clave de desempeño que la empresa adopta durante y después del acompañamiento técnico.</p>
+    <p>Los problemas identificados se deben abordar en relación con el resto de la organización, no en aislamiento. Los indicadores de desempeño deben surgir directamente de las necesidades de la empresa.</p>
+    <p class="h">02 · Institucionalizar capacidades dentro de las empresas</p>
+    <p>Segundo, <b>el conocimiento tiene que quedarse en la empresa, no en el extensionista.</b> El propósito del acompañamiento no es que la empresa dependa de un asesor que le diga qué hacer, sino que desarrolle capacidades propias a partir de sus necesidades. Las personas que realizan el acompañamiento deben enfocarse en instalar capacidades en el personal y la cultura organizacional de la empresa para que trasciendan la rotación de personal y el acompañamiento. Para eso es fundamental involucrar a la alta gerencia y lograr que las nuevas prácticas se incorporen en la manera habitual de gestionar la empresa. <b>Sin apropiación en el nivel directivo no hay cambio cultural, y sin cambio cultural el conocimiento se disuelve.</b></p>
+    <p class="h">03 · Medir es el punto de partida</p>
+    <p>Y tercero, no podemos asumir que las empresas ya tienen la información necesaria para monitorear su desempeño. De hecho, uno de los principales aprendizajes del piloto fue exactamente que muchas empresas no tenían indicadores de desempeño y registraban la información de producción de manera informal <b>en papel, cuadernos o dependía de la memoria de los operarios.</b> Ante esto, el programa tuvo que enseñar primero a los empresarios a levantar información básica y construir indicadores desde cero, antes de poder avanzar con el resto del acompañamiento. El monitoreo, seguimiento y evaluación deben formar parte del programa desde su diseño e incorporarse como un proceso continuo en la implementación.</p>
+  </div>
+  <ul class="keys">
+    <li>1. Visión sistémica, no por áreas sueltas; indicadores desde las necesidades.</li>
+    <li>2. El conocimiento se queda en la empresa · alta gerencia · «sin apropiación no hay cambio cultural».</li>
+    <li>3. Medir desde el inicio: papel, cuadernos, memoria de operarios.</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="15" data-t="Siguientes pasos (sección)">
+  <span class="tag">Diapositiva 15 <small>Siguientes pasos</small></span>
+  <div class="script">
+    <p><b>Y aquí entran ustedes.</b> Todo esto es muy interesante pero eso fue hace más de 10 años. ¿Qué sigue? Pensando en el presente y el futuro del país, ¿qué podemos hacer hoy en día con estos resultados para mejorar la productividad empresarial?</p>
+    <p class="bridge">Nosotros proponemos 3 opciones:</p>
+  </div>
+  <ul class="keys">
+    <li>«Y aquí entran ustedes.» ¿Qué hacemos hoy con esto?</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="16" data-t="Opción A · Escalar">
+  <span class="tag">Diapositiva 16 <small>Opción A · Escalar el acompañamiento técnico grupal</small></span>
+  <div class="script">
+    <p>La primera es <b>escalar el acompañamiento técnico</b> con los mismos componentes que tuvo en el piloto para probar si sus mecanismos e impacto permanecen al implementarse en otros sectores, a escala nacional, y tal vez incorporando nuevas tecnologías como la virtualidad para facilitar la modalidad grupal o la inteligencia artificial para potenciar la gestión de procesos en cada una de las líneas de la intervención. Más que implementar el modelo de extensionismo, como ya se hizo, se requiere adaptarlo a nuevos contextos y actualizarlo para su expansión.</p>
+    <p><b>Sabemos que este acompañamiento funciona y tenemos muy buenas pistas de por qué. El reto es encontrar la mejor forma de escalarlo.</b> Pues es claro que hay una <b>falla de mercado</b> acá: las empresas no pueden comprar este tipo de acompañamiento hoy en día y, por otro lado, el gobierno ya no lo financia tampoco. Entonces hay que encontrar la forma.</p>
+    <p>Pero una vez lo hagamos, hay que asegurarnos de que cuando el programa se escale, se siga haciendo con calidad y rigurosidad para entregar los resultados iniciales. Para esto es clave <b>seguir monitoreando a escala.</b> Colombia tiene los sistemas de gestión para eso. De escalarse vía gobierno, el sistema natural sería <b>SINERGIA.</b></p>
+  </div>
+  <ul class="keys">
+    <li>Mismos componentes → otros sectores, escala nacional; tal vez virtualidad, IA.</li>
+    <li>Adaptar y actualizar, no solo repetir.</li>
+    <li>Funciona y sabemos por qué → el reto es cómo escalar.</li>
+    <li>Falla de mercado: las empresas no lo pueden comprar y el gobierno ya no lo financia.</li>
+    <li>Escalar con calidad · monitorear a escala · SINERGIA.</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="17" data-t="Opción B · Rediseñar">
+  <span class="tag">Diapositiva 17 <small>Opción B · Rediseñar los programas de productividad con los aprendizajes del grupal</small></span>
+  <div class="script">
+    <p>La segunda opción es <b>rediseñar los programas de productividad actuales</b> incorporando los aprendizajes del acompañamiento técnico grupal incluyendo el número de horas de acompañamiento, la modalidad grupal, el enfoque de visión sistémica, el perfil de los extensionistas y la selección de los grupos.</p>
+    <p>Sin embargo, <b>este modelo híbrido no ha sido probado</b>; podría combinar lo mejor de ambos programas o no replicar los logros del extensionismo. De cualquier modo, si se implementa, debe evaluarse. <b>RIGUROSAMENTE.</b></p>
+  </div>
+  <ul class="keys">
+    <li>Llevar a los programas actuales: horas, modalidad grupal, visión sistémica, perfil, selección.</li>
+    <li>Híbrido no probado → si se hace, se evalúa. Rigurosamente.</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="18" data-t="Opción C · Evaluar">
+  <span class="tag">Diapositiva 18 <small>Opción C · Continuar los programas actuales, pero evaluarlos rigurosamente</small></span>
+  <div class="script">
+    <p>Pocos programas de productividad actuales tienen una evaluación de impacto rigurosa como la del extensionismo tecnológico.</p>
+    <p>La realidad es que podemos seguir invirtiendo en la implementación de estos programas, pero actualmente <b>no tenemos evidencia concreta de su impacto.</b></p>
+    <p>Para tomar buenas decisiones, es necesario hacer una evaluación con el mismo rigor que tiene actualmente el extensionismo.</p>
+    <p>Lo que queremos es poder <b>medir diferentes programas de productividad con la misma barra de rigor</b> para decidir dónde queremos seguir invirtiendo recursos para mejorar la productividad empresarial en Colombia.</p>
+  </div>
+  <ul class="keys">
+    <li>Pocos programas actuales tienen evaluación de impacto.</li>
+    <li>Seguimos invirtiendo sin evidencia de su impacto.</li>
+    <li>Misma barra de rigor para todos → decidir dónde invertir.</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="19" data-t="De la evidencia a la acción · QR">
+  <span class="tag">Diapositiva 19 <small>De la evidencia a la acción (y más evidencia) · QR</small></span>
+  <div class="script">
+    <p><b>Las 3 opciones que acabo de presentar no son excluyentes.</b> Cada una responde una pregunta y representa una oportunidad distinta para seguir generando evidencia y aprendiendo cómo mejorar la productividad empresarial en Colombia.</p>
+    <p>La primera pone a prueba si el programa original funciona a mayor escala: en otros sectores, territorios y con nuevas tecnologías. La segunda pone a prueba un modelo híbrido que todavía no se ha implementado. Y la tercera pone a prueba lo que el país ya está haciendo hoy para orientar el uso responsable de recursos públicos.</p>
+    <p>Se pueden combinar. Se pueden escalonar. <b>Lo que no debería pasar es que se implemente cualquiera de las tres sin medir su impacto. No nos podemos dar el lujo de avanzar a ciegas.</b></p>
+    <p>Por eso los invito a que sigamos esta conversación. Me pueden buscar después de esta presentación o contactarnos por nuestras redes para seguir pensando juntos cómo mejorar la productividad empresarial en Colombia.</p>
+    <p>Además, en IPA estamos terminando de desarrollar una <b>guía práctica para implementar y escalar el extensionismo tecnológico.</b> La guía reúne los componentes centrales del modelo, los principales hallazgos de la investigación, y las preguntas que cualquier entidad debería considerar antes de implementarlo.</p>
+    <p>La pensamos no como un resumen del estudio sino un documento de trabajo para quien tenga que adaptarlo y actualizarlo al país de hoy.</p>
+    <p>Si les interesa recibir la guía y el artículo de la evaluación a 10 años cuando se publiquen, pueden <b>escanear este código QR</b> y registrar su interés. Esto también nos permitirá mantener la conversación y contactarlos más adelante.</p>
+  </div>
+  <ul class="keys">
+    <li>No excluyentes · se combinan, se escalonan.</li>
+    <li>Lo único que no: implementar sin medir. «No nos podemos dar el lujo de avanzar a ciegas.»</li>
+    <li>Búsquenme · guía de implementación · QR.</li>
+  </ul>
+</section>
+
+<section class="slide" data-n="20" data-t="Cierre · Gracias">
+  <span class="tag">Diapositiva 20 <small>Gracias por su atención</small></span>
+  <div class="script">
+    <p>Hace más de diez años, el gobierno decidió no sólo implementar un programa, sino evaluarlo. <b>Por esa decisión estamos teniendo esta conversación hoy. Esa misma decisión está disponible ahora.</b></p>
+    <p>Estamos convencidos de que Colombia tiene el potencial de seguir generando evidencia para el país y la región. <b>Apostarle a la evaluación rigurosa es invertir en los cimientos de políticas públicas</b> que generen un mayor retorno a la inversión, que posicionen a Colombia como un referente global y que mantengan su impacto a escala de forma sostenible.</p>
+  </div>
+  <ul class="keys">
+    <li>Hace 10 años se decidió evaluar → por eso hablamos hoy.</li>
+    <li>Esa decisión está disponible ahora.</li>
+    <li>Evaluación rigurosa = cimientos: más retorno, referente global, impacto sostenible.</li>
+  </ul>
+</section>
+
+<div class="extra" id="extra">
+  <h2>Versión de 60 segundos</h2>
+  <p class="who">Para el pasillo o para la reunión aparte con el viceministro. Está armada con frases del guion.</p>
+  <p>Hace más de diez años Colombia probó dos versiones del mismo programa de acompañamiento técnico a pymes, y lo evaluó con asignación aleatoria: 159 empresas de autopartes. La versión grupal costó un tercio de la individual y, diez años después, esas empresas venden 55 % más y tienen 48 % más utilidades, medido con datos administrativos que nadie del programa pudo tocar. Incluso en el escenario más conservador, la inversión se recupera en menos de un año. Sabemos que funciona y tenemos buenas pistas de por qué: visión sistémica, capacidades que se quedan en la empresa y medición desde el inicio. El reto es cómo escalarlo, porque hoy las empresas no lo pueden comprar y el gobierno ya no lo financia. Hay tres caminos que se pueden combinar: escalarlo, rediseñar los programas actuales con esos aprendizajes, o seguir con los actuales pero evaluarlos. Lo que no nos podemos dar es el lujo de avanzar a ciegas.</p>
+
+  <h2>Preguntas probables</h2>
+  <p class="who">Respuestas propuestas con base en los anexos (diapositivas 21 a 25) y en las decisiones del 16, 17 y 18 de septiembre. Tienes que validarlas tú: no vienen del guion.</p>
+
+  <h3>1. ¿Cuánto costó el programa?</h3>
+  <p>Solo si lo preguntan (anexo 25): el grupal, unos 10.500 dólares por empresa, y el individual, unos 29.000. El anexo los fecha en 2020, pero en el guion el equipo anotó que el año es incierto (un borrador anterior decía 2013). Mejor decir «del orden de 10.000 dólares por empresa, un tercio del individual» y no amarrarse a un año.</p>
+
+  <h3>2. Si las utilidades suben 475.000 dólares, ¿por qué dicen que se paga en 7 meses?</h3>
+  <p>Porque elegimos el cálculo más conservador. El análisis de costo-efectividad usa el aumento anual de utilidades estimado para el grupo grupal (promedio de 273.000 dólares, con un intervalo de confianza del 95 % entre 17.400 y 528.000) y toma el extremo más bajo: 17.400. Incluso con ese número, la inversión se recupera en 7 meses y rinde 65 % en un año. Con el promedio, se recupera en menos de un mes. El 475.000 es otra estimación: el efecto a diez años que aparece en la diapositiva de resultados.</p>
+
+  <h3>3. ¿Por qué autopartes? ¿Esto sirve para otros sectores?</h3>
+  <p>Anexo 21: se buscó un sector con producción en varias regiones, con muchas empresas, con potencial de crecimiento y con parecidos con otras industrias manufactureras, por ejemplo en la gestión de inventarios. Que funcione en otros sectores es justamente una de las preguntas de la opción A, y por eso escalar exige seguir monitoreando. Lo que recomienda la evidencia es enfocarse en las empresas con mayor impacto marginal: más pequeñas y con peor calidad gerencial de base.</p>
+
+  <h3>4. ¿Esto no es lo mismo que la consultoría o que los programas que ya existen?</h3>
+  <p>Anexo 22: la consultoría resuelve un problema puntual y se retira. El acompañamiento técnico transforma la manera en que la empresa resuelve sus problemas y deja las capacidades instaladas. El profesional facilita y articula, no dicta respuestas, y combina el trabajo individual con el grupal entre pares.</p>
+
+  <h3>5. ¿No son demasiado buenos estos resultados? ¿No será un auge del sector?</h3>
+  <p>Cualquier choque del sector (auge, pandemia, competencia china) golpeó por igual a los tres grupos, porque la asignación fue aleatoria: lo único que los diferencia es la suerte de entrar o no. La diferencia entre ellos es el efecto del programa. Además, los datos salen de fuentes secundarias (PILA, EAM, DIAN, EDIT), no de reportes del implementador. Y hay un control interno: la modalidad individual, más cara, no mostró efectos significativos.</p>
+
+  <h3>6. ¿Y la inteligencia artificial?</h3>
+  <p>Es una pregunta abierta y no hacemos una recomendación de diseño. Tiene potencial, sobre todo para facilitar lo grupal y la gestión de procesos, pero hoy hay más preguntas que certezas sobre cómo se cruza con este tipo de programas, y esas preguntas se responden con evidencia. Por eso aparece en la opción A como un «tal vez» por probar.</p>
+
+  <h3>7. ¿Hay evidencia de otros países?</h3>
+  <p>Anexo 23: en Perú (GRADE, 2025), con mujeres microempresarias, la consultoría grupal costó la mitad, tuvo resultados comparables y mejoró las redes de negocios. En India (Bloom y coautores, 2020), la inversión se recuperó en cerca de un año y la ventaja seguía ocho años después. En Ghana (Karlan y coautores, 2014), diez horas de consultoría individual mejoraron las prácticas, pero el efecto se desvaneció. En México (Bruhn y coautores, 2018), la consultoría cofinanciada tuvo aumentos de empleo cinco años después.</p>
+
+  <h3>8. ¿Cómo se escalaría? ¿Quién lo paga?</h3>
+  <p>Es la pregunta que deja abierta la opción A: hay una falla de mercado, porque las empresas no pueden comprar este acompañamiento y el gobierno ya no lo financia. No traemos un modelo de financiación. Lo que sí sabemos es qué tiene que conservarse al escalar (visión sistémica, capacidades instaladas, medición) y cómo vigilar que funcione: monitoreo a escala y, si va por la vía del gobierno, SINERGIA.</p>
+
+  <h3>9. ¿Dónde encuentro el estudio? ¿Cuándo sale la guía?</h3>
+  <p>El paper de la evaluación a 10 años ya está publicado. La guía de escalamiento está por publicarse. Quien se registre con el QR de la diapositiva 19 recibe las dos cosas. No prometas una fecha para la guía.</p>
+
+  <h2>Registro del ensayo</h2>
+  <p class="who">En modo Tarjetas, cada vez que pasas de diapositiva se guarda cuánto te demoraste. Se compara con el tiempo estimado a la velocidad elegida.</p>
+  <div id="logbox"><p class="who">Todavía no hay ensayo registrado.</p></div>
+</div>
+</main>
+
+<div id="bar" class="js-only">
+  <div class="row">
+    <button id="prev" aria-label="Diapositiva anterior">⏮</button>
+    <button id="play" class="play" aria-label="Iniciar">▶ Iniciar</button>
+    <button id="next" aria-label="Diapositiva siguiente">⏭</button>
+  </div>
+  <div class="row">
+    <button id="fminus" aria-label="Letra más pequeña">A−</button>
+    <button id="fplus" aria-label="Letra más grande">A+</button>
+    <button id="sminus" aria-label="Más lento">−</button>
+    <span class="val"><b id="wpm">130</b>pal/min</span>
+    <button id="splus" aria-label="Más rápido">+</button>
+  </div>
+  <div class="row">
+    <button id="mPrompt" class="on">Prompter</button>
+    <button id="mCards">Tarjetas</button>
+    <button id="mKeys">Ideas</button>
+    <button id="ojoBtn" class="on" style="display:none">Ojos</button>
+    <button id="reset" aria-label="Reiniciar">↺</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var body = document.body;
+  var slides = Array.prototype.slice.call(document.querySelectorAll('section.slide'));
+  var N = slides.length;
+  // localStorage puede no existir (vista previa de archivos, modo privado): memoria como respaldo
+  var store; try { store = window.localStorage; store.getItem('x'); } catch (e) {
+    var mem = {}; store = { getItem: function (k) { return mem[k] || null; }, setItem: function (k, v) { mem[k] = String(v); }, removeItem: function (k) { delete mem[k]; } };
+  }
+  var KEY = 'tp-bq-v2';
+  var S = { fs: 32, wpm: 130, mode: 'prompt', ojo: true, cur: 0 };
+  try { var saved = JSON.parse(store.getItem(KEY) || '{}'); for (var k in saved) S[k] = saved[k]; } catch (e) {}
+  function save() { try { store.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+  // Palabras por diapositiva (solo el guion, no las ideas)
+  function words(el) { return (el.textContent.trim().match(/\S+/g) || []).length; }
+  slides.forEach(function (s) { s._w = words(s.querySelector('.script')); });
+  var totalW = slides.reduce(function (a, s) { return a + s._w; }, 0);
+  function fmt(sec) { sec = Math.max(0, Math.round(sec)); var m = Math.floor(sec / 60), s = sec % 60; return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s; }
+  function target(s) { return s._w / S.wpm * 60; }
+  slides.forEach(function (s) {
+    var t = document.createElement('span'); t.style.cssText = 'float:right;color:#9a978f;font-weight:400;text-transform:none;letter-spacing:0';
+    s.querySelector('.tag').appendChild(t); s._est = t;
+  });
+  function paintEst() {
+    slides.forEach(function (s) { s._est.textContent = '≈ ' + fmt(target(s)); });
+    $('wpm').textContent = S.wpm;
+  }
+
+  // Estado de reproducción
+  var playing = false, last = 0, acc = 0, elapsed = 0, tickT = 0;
+  var wake = null;
+  function lockWake() { if ('wakeLock' in navigator) navigator.wakeLock.request('screen').then(function (w) { wake = w; }).catch(function () {}); }
+  function unlockWake() { if (wake) { wake.release().catch(function () {}); wake = null; } }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && playing) lockWake(); });
+
+  function pxPerSec() {
+    var h = $('main').scrollHeight - window.innerHeight * 0.7;
+    return (h / totalW) * (S.wpm / 60);
+  }
+  function frame(t) {
+    if (!playing) return;
+    var dt = last ? (t - last) / 1000 : 0; last = t;
+    elapsed += dt;
+    if (S.mode === 'prompt') {
+      acc += pxPerSec() * dt;
+      if (acc >= 1) { var step = Math.floor(acc); window.scrollBy(0, step); acc -= step; }
+    }
+    if (t - tickT > 250) { tickT = t; hud(); }
+    requestAnimationFrame(frame);
+  }
+  function setPlay(on) {
+    playing = on; last = 0;
+    $('play').textContent = on ? '⏸ Pausa' : '▶ Seguir';
+    $('play').classList.toggle('pausa', on);
+    body.classList.toggle('chrome-hidden', on && S.mode === 'prompt');
+    if (on) { lockWake(); if (S.mode === 'cards' && !cardStart) cardStart = elapsed; requestAnimationFrame(frame); } else { unlockWake(); hud(); }
+  }
+
+  // Diapositiva actual
+  function currentByScroll() {
+    var y = window.innerHeight * 0.30, idx = 0;
+    for (var i = 0; i < N; i++) { if (slides[i].getBoundingClientRect().top <= y) idx = i; }
+    return idx;
+  }
+  function remainingWords(idx) {
+    var r = 0; for (var i = idx; i < N; i++) r += slides[i]._w; return r;
+  }
+  function hud() {
+    var idx = S.mode === 'cards' ? S.cur : currentByScroll();
+    S.cur = idx;
+    var s = slides[idx];
+    $('now').textContent = s.dataset.n + '/' + N + ' · ' + s.dataset.t;
+    $('clock').textContent = fmt(elapsed);
+    $('remain').textContent = 'quedan ≈ ' + fmt(remainingWords(idx) / S.wpm * 60);
+  }
+
+  // Tarjetas + registro de ensayo
+  var cardStart = 0, log = [];
+  try { log = JSON.parse(store.getItem(KEY + '-log') || '[]'); } catch (e) {}
+  function showCard(i) {
+    i = Math.max(0, Math.min(N - 1, i));
+    if (S.mode === 'cards' && playing && i !== S.cur) {
+      log.push({ n: slides[S.cur].dataset.n, t: elapsed - cardStart, target: target(slides[S.cur]) });
+      try { store.setItem(KEY + '-log', JSON.stringify(log)); } catch (e) {}
+      cardStart = elapsed; paintLog();
+    }
+    S.cur = i;
+    slides.forEach(function (s, j) { s.classList.toggle('current', j === i); });
+    window.scrollTo(0, 0); hud(); save();
+  }
+  function paintLog() {
+    if (!log.length) return;
+    var rows = log.slice(-N).map(function (r) {
+      var over = r.t > r.target * 1.25;
+      return '<tr><td>' + r.n + '</td><td class="' + (over ? 'over' : '') + '">' + fmt(r.t) + '</td><td>' + fmt(r.target) + '</td></tr>';
+    }).join('');
+    var sum = log.slice(-N).reduce(function (a, r) { return a + r.t; }, 0);
+    $('logbox').innerHTML = '<table class="log"><tr><th>Diap.</th><th>Real</th><th>Estimado</th></tr>' + rows +
+      '<tr><th>Total</th><th>' + fmt(sum) + '</th><th></th></tr></table>' +
+      '<p><button id="clearlog" style="margin-top:10px;padding:8px 14px;border-radius:10px;border:0">Borrar registro</button></p>';
+    $('clearlog').onclick = function () { log = []; store.removeItem(KEY + '-log'); $('logbox').innerHTML = '<p class="who">Registro borrado.</p>'; };
+  }
+
+  function goSlide(delta) {
+    if (S.mode === 'cards') { showCard(S.cur + delta); return; }
+    var idx = Math.max(0, Math.min(N - 1, currentByScroll() + delta));
+    var y = slides[idx].getBoundingClientRect().top + window.scrollY - window.innerHeight * 0.30 + 2;
+    window.scrollTo({ top: y, behavior: 'smooth' }); setTimeout(hud, 400);
+  }
+  function setMode(m) {
+    S.mode = m; save();
+    body.classList.toggle('mode-cards', m === 'cards');
+    body.classList.toggle('mode-keys', m === 'keys');
+    ['mPrompt', 'mCards', 'mKeys'].forEach(function (id) { $(id).classList.remove('on'); });
+    $({ prompt: 'mPrompt', cards: 'mCards', keys: 'mKeys' }[m]).classList.add('on');
+    if (m === 'cards') showCard(S.cur); else { slides.forEach(function (s) { s.classList.remove('current'); }); goSlide(0); }
+    body.classList.remove('chrome-hidden');
+  }
+  function setFont(d) { S.fs = Math.max(20, Math.min(56, S.fs + d)); document.documentElement.style.setProperty('--fs', S.fs + 'px'); save(); }
+  function setWpm(d) { S.wpm = Math.max(90, Math.min(190, S.wpm + d)); paintEst(); hud(); save(); }
+
+  $('play').onclick = function (e) { e.stopPropagation(); setPlay(!playing); };
+  $('prev').onclick = function () { goSlide(-1); };
+  $('next').onclick = function () { goSlide(1); };
+  $('fminus').onclick = function () { setFont(-2); };
+  $('fplus').onclick = function () { setFont(2); };
+  $('sminus').onclick = function () { setWpm(-5); };
+  $('splus').onclick = function () { setWpm(5); };
+  $('mPrompt').onclick = function () { setMode('prompt'); };
+  $('mCards').onclick = function () { setMode('cards'); };
+  $('mKeys').onclick = function () { setMode('keys'); };
+  $('ojoBtn').onclick = function () { S.ojo = !S.ojo; body.classList.toggle('hide-ojo', !S.ojo); this.classList.toggle('on', S.ojo); save(); };
+  $('reset').onclick = function () { setPlay(false); elapsed = 0; cardStart = 0; $('play').textContent = '▶ Iniciar'; if (S.mode === 'cards') showCard(0); else window.scrollTo(0, 0); hud(); };
+
+  // Tocar el texto = pausar/seguir. Deslizar en tarjetas = cambiar.
+  var tx = 0, ty = 0, moved = false;
+  $('main').addEventListener('touchstart', function (e) { tx = e.touches[0].clientX; ty = e.touches[0].clientY; moved = false; }, { passive: true });
+  $('main').addEventListener('touchmove', function () { moved = true; }, { passive: true });
+  $('main').addEventListener('touchend', function (e) {
+    var dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty;
+    if (S.mode === 'cards' && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { showCard(S.cur + (dx < 0 ? 1 : -1)); return; }
+    if (!moved) { if (e.target.closest('#extra')) return; setPlay(!playing); if (!playing) body.classList.remove('chrome-hidden'); }
+  });
+  $('main').addEventListener('click', function (e) { if (!('ontouchstart' in window) && !e.target.closest('#extra')) setPlay(!playing); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === ' ') { e.preventDefault(); setPlay(!playing); }
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') goSlide(1);
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') goSlide(-1);
+    if (e.key === 'ArrowUp') setWpm(5);
+    if (e.key === 'ArrowDown') setWpm(-5);
+  });
+  window.addEventListener('scroll', function () { if (!playing) hud(); }, { passive: true });
+
+  // Arranque
+  document.documentElement.style.setProperty('--fs', S.fs + 'px');
+  body.classList.toggle('hide-ojo', !S.ojo); $('ojoBtn').classList.toggle('on', S.ojo);
+  paintEst(); paintLog();
+  setMode(S.mode === 'cards' || S.mode === 'keys' ? S.mode : 'prompt');
+  $('play').textContent = '▶ Iniciar';
+  hud();
+})();
+</script>
+</body>
+</html>
